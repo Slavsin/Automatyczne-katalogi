@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Katalog PDF - Spod Igly i Nitki</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Katalog produktowy</h1>
+        <p class="subtitle">Spod Igly i Nitki</p>
+      </header>
+
+      <!-- Wybor zrodla danych -->
+      <section class="source-tabs">
+        <button class="tab-btn active" data-source="upload">Upload pliku</button>
+        <button class="tab-btn" data-source="ftp">Z serwera FTP</button>
+      </section>
+
+      <!-- Upload pliku -->
+      <section class="upload-panel" id="uploadPanel">
+        <h2>Przeslij plik z danymi</h2>
+        <p class="upload-hint">Dozwolone formaty: CSV, XML, XLSX (max 50MB)</p>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="fileInput" accept=".csv,.xml,.xlsx,.xls" hidden />
+          <div class="upload-content">
+            <span class="upload-icon">+</span>
+            <p>Kliknij lub przeciagnij plik</p>
+          </div>
+        </div>
+        <div id="uploadStatus" class="upload-status"></div>
+      </section>
+
+      <!-- Info o danych -->
+      <section class="info-panel" id="feedInfo">
+        <p>Przeslij plik aby zobaczyc informacje o produktach...</p>
+      </section>
+
+      <!-- Filtry -->
+      <section class="filters">
+        <h2>Filtry (opcjonalne)</h2>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="category">Kategoria</label>
+            <select id="category">
+              <option value="">Wszystkie</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="minPrice">Cena min</label>
+            <input type="number" id="minPrice" placeholder="0" min="0" />
+          </div>
+          <div class="filter-group">
+            <label for="maxPrice">Cena max</label>
+            <input type="number" id="maxPrice" placeholder="9999" min="0" />
+          </div>
+          <div class="filter-group">
+            <label for="sortBy">Sortuj po</label>
+            <select id="sortBy">
+              <option value="">Domyslnie</option>
+              <option value="name">Nazwie</option>
+              <option value="price">Cenie</option>
+              <option value="category">Kategorii</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button id="generate" class="btn-primary" disabled>
+          Generuj katalog PDF
+        </button>
+      </section>
+
+      <section class="log-panel">
+        <h2>Logi</h2>
+        <div id="log"></div>
+      </section>
+    </main>
+
+    <script src="/main.js"></script>
+  </body>
+</html>
