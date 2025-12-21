@@ -8,5 +8,5 @@ export const ftpConfig = {
 export const catalogConfig = {
   productsPerPage: 2,
   eanField: "Index",
-  maxProducts: 3000,
+  maxProducts: 10000,
 };

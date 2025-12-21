@@ -16,7 +16,7 @@
       <!-- Wybor zrodla danych -->
       <section class="source-tabs">
         <button class="tab-btn active" data-source="upload">Upload pliku</button>
-        <button class="tab-btn" data-source="ftp">Z serwera FTP</button>
+        <button class="tab-btn" data-source="url">Z adresu URL</button>
       </section>
 
       <!-- Upload pliku -->
@@ -33,6 +33,30 @@
         <div id="uploadStatus" class="upload-status"></div>
       </section>
 
+      <!-- Pobieranie z URL -->
+      <section class="url-panel" id="urlPanel" style="display: none;">
+        <h2>Pobierz feed z adresu URL</h2>
+        <p class="upload-hint">Podaj adres URL do pliku XML z feedem produktowym</p>
+        <div class="url-form">
+          <div class="filter-group filter-group-wide">
+            <label for="feedUrl">Adres URL</label>
+            <input type="url" id="feedUrl" placeholder="https://example.com/feed.xml" />
+          </div>
+          <div class="filter-row">
+            <div class="filter-group">
+              <label for="feedLogin">Login (opcjonalnie)</label>
+              <input type="text" id="feedLogin" placeholder="login" />
+            </div>
+            <div class="filter-group">
+              <label for="feedPassword">Haslo (opcjonalnie)</label>
+              <input type="password" id="feedPassword" placeholder="haslo" />
+            </div>
+          </div>
+          <button type="button" id="fetchUrlBtn" class="btn-secondary">Pobierz feed</button>
+        </div>
+        <div id="urlStatus" class="upload-status"></div>
+      </section>
+
       <!-- Info o danych -->
       <section class="info-panel" id="feedInfo">
         <p>Przeslij plik aby zobaczyc informacje o produktach...</p>
@@ -42,12 +66,32 @@
       <section class="filters">
         <h2>Filtry (opcjonalne)</h2>
         <div class="filter-row">
+          <div class="filter-group filter-group-wide">
+            <label for="searchPhrase">Szukaj w nazwie</label>
+            <input type="text" id="searchPhrase" placeholder="np. kocobluza, poduszka, narzuta..." />
+          </div>
+        </div>
+        <div class="filter-row">
           <div class="filter-group">
             <label for="category">Kategoria</label>
             <select id="category">
               <option value="">Wszystkie</option>
             </select>
           </div>
+          <div class="filter-group">
+            <label for="color">Kolor</label>
+            <select id="color">
+              <option value="">Wszystkie</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="composition">Sklad</label>
+            <select id="composition">
+              <option value="">Wszystkie</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-row">
           <div class="filter-group">
             <label for="minPrice">Cena min</label>
             <input type="number" id="minPrice" placeholder="0" min="0" />
@@ -57,12 +101,25 @@
             <input type="number" id="maxPrice" placeholder="9999" min="0" />
           </div>
           <div class="filter-group">
+            <label for="minStock">Min. stan magazynowy</label>
+            <input type="number" id="minStock" placeholder="0" min="0" />
+          </div>
+          <div class="filter-group">
+            <label for="onlyAvailable" class="checkbox-label">
+              <input type="checkbox" id="onlyAvailable" />
+              Tylko dostepne
+            </label>
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="filter-group">
             <label for="sortBy">Sortuj po</label>
             <select id="sortBy">
               <option value="">Domyslnie</option>
               <option value="name">Nazwie</option>
               <option value="price">Cenie</option>
               <option value="category">Kategorii</option>
+              <option value="stock">Stanie magazynowym</option>
             </select>
           </div>
         </div>

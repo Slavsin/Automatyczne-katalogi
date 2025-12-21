@@ -98,5 +98,25 @@ Zwraca: `application/pdf`
 
 ## Deployment
 
-- **Mikr.us VPS:** Node + pm2 + nginx reverse proxy
-- **Vercel:** Frontend statyczny + Serverless Functions
+### Mikr.us VPS (produkcja)
+- **URL:** http://katalog.byst.re
+- **Serwer:** 65.21.202.148 (SSH port 10161)
+- **Ścieżka:** `/var/www/Automatyczne-katalogi`
+- **Process manager:** PM2 (`pm2 start src/index.js --name "katalog-pdf"`)
+- **Reverse proxy:** Nginx (config: `/etc/nginx/sites-available/katalog`)
+
+### Komendy deployment
+```bash
+# Połączenie SSH
+ssh -p 10161 root@65.21.202.148
+
+# Aktualizacja kodu
+cd /var/www/Automatyczne-katalogi
+git pull
+
+# Restart aplikacji
+pm2 restart katalog-pdf
+
+# Logi
+pm2 logs katalog-pdf
+```

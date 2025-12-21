@@ -3,6 +3,8 @@ import multer from "multer";
 import path from "path";
 import os from "os";
 import fs from "fs";
+import got from "got";
+import { CookieJar } from "tough-cookie";
 import { downloadFeed } from "../ftpClient.js";
 import { parseFeed } from "../feedParser.js";
 import { generateCatalogPdf } from "../catalogGenerator.js";
@@ -34,6 +36,60 @@ const upload = multer({
 
 // Zmienna do przechowywania ścieżki ostatnio uploadowanego pliku
 let uploadedFilePath = null;
+let urlFeedFilePath = null;
+
+// Funkcja do pobierania feedu z URL
+// Serwer abstore wymaga obsługi cookies (sesji) - używamy tough-cookie
+async function fetchFeedFromUrl(url, login, password) {
+  console.log(`Pobieranie feedu z: ${url}`);
+
+  // Wbuduj credentials w URL jeśli podane
+  let finalUrl = url;
+  if (login && password) {
+    try {
+      const urlObj = new URL(url);
+      urlObj.username = login;
+      urlObj.password = password;
+      finalUrl = urlObj.toString();
+      console.log(`Autoryzacja: credentials wbudowane w URL dla użytkownika "${login}"`);
+    } catch (e) {
+      console.error("Błąd tworzenia URL z credentials:", e.message);
+    }
+  }
+
+  try {
+    // Cookie jar do przechowywania sesji
+    const cookieJar = new CookieJar();
+
+    // Użyj got z cookie jar - serwer wymaga przesyłania cookies
+    const response = await got(finalUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/xml, text/xml, */*",
+      },
+      cookieJar,
+      followRedirect: true,
+      maxRedirects: 10,
+      timeout: { request: 180000 },
+      https: { rejectUnauthorized: false },
+    });
+
+    const content = response.body;
+
+    // Zapisz do pliku tymczasowego
+    const tempPath = path.join(os.tmpdir(), `url-feed-${Date.now()}.xml`);
+    fs.writeFileSync(tempPath, content, "utf8");
+
+    console.log(`Feed zapisany do: ${tempPath} (${(content.length / 1024).toFixed(1)} KB)`);
+    return tempPath;
+  } catch (error) {
+    console.error("Błąd pobierania:", error.message);
+    if (error.response) {
+      throw new Error(`Błąd HTTP ${error.response.statusCode}: ${error.response.statusMessage || "Nieznany błąd"}`);
+    }
+    throw error;
+  }
+}
 
 router.get("/generate-catalog", async (req, res) => {
   const startTime = Date.now();
@@ -56,8 +112,16 @@ router.get("/generate-catalog", async (req, res) => {
 
     console.log(`Znaleziono ${products.length} produktów`);
 
-    // Opcjonalne filtrowanie po kategorii
-    const { category, minPrice, maxPrice, sortBy } = req.query;
+    // Opcjonalne filtrowanie
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = req.query;
+
+    if (searchPhrase) {
+      const phrase = searchPhrase.toLowerCase();
+      products = products.filter((p) =>
+        p.name.toLowerCase().includes(phrase)
+      );
+      console.log(`Po filtrze frazy "${searchPhrase}": ${products.length} produktów`);
+    }
 
     if (category) {
       products = products.filter((p) =>
@@ -74,12 +138,39 @@ router.get("/generate-catalog", async (req, res) => {
       products = products.filter((p) => p.price <= Number(maxPrice));
     }
 
+    // Nowe filtry
+    if (minStock) {
+      products = products.filter((p) => p.availabilityCount >= Number(minStock));
+      console.log(`Po filtrze min. stanu (${minStock}): ${products.length} produktów`);
+    }
+
+    if (onlyAvailable === "true" || onlyAvailable === "1") {
+      products = products.filter((p) => p.availabilityCount > 0);
+      console.log(`Po filtrze dostępności: ${products.length} produktów`);
+    }
+
+    if (color) {
+      products = products.filter((p) =>
+        p.color && p.color.toLowerCase().includes(color.toLowerCase())
+      );
+      console.log(`Po filtrze koloru (${color}): ${products.length} produktów`);
+    }
+
+    if (composition) {
+      products = products.filter((p) =>
+        p.composition && p.composition.toLowerCase().includes(composition.toLowerCase())
+      );
+      console.log(`Po filtrze składu (${composition}): ${products.length} produktów`);
+    }
+
     if (sortBy === "price") {
       products.sort((a, b) => a.price - b.price);
     } else if (sortBy === "name") {
       products.sort((a, b) => a.name.localeCompare(b.name, "pl"));
     } else if (sortBy === "category") {
       products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
+    } else if (sortBy === "stock") {
+      products.sort((a, b) => b.availabilityCount - a.availabilityCount);
     }
 
     // Generowanie PDF
@@ -119,16 +210,26 @@ router.post("/upload-feed", upload.single("file"), async (req, res) => {
     // Parsowanie i zwrócenie info
     const products = await parseFeed(uploadedFilePath);
     const categories = [...new Set(products.map((p) => p.category).filter(Boolean))];
+    const colors = [...new Set(products.map((p) => p.color).filter(Boolean))];
+    const compositions = [...new Set(products.map((p) => p.composition).filter(Boolean))];
+    const availableCount = products.filter((p) => p.availabilityCount > 0).length;
 
     res.json({
       success: true,
       filename: req.file.originalname,
       totalProducts: products.length,
+      availableProducts: availableCount,
       estimatedPages: Math.ceil(products.length / 2),
       categories: categories.sort(),
+      colors: colors.sort(),
+      compositions: compositions.sort(),
       priceRange: {
         min: Math.min(...products.map((p) => p.price).filter((p) => p > 0)) || 0,
         max: Math.max(...products.map((p) => p.price)) || 0,
+      },
+      stockRange: {
+        min: Math.min(...products.map((p) => p.availabilityCount)) || 0,
+        max: Math.max(...products.map((p) => p.availabilityCount)) || 0,
       },
     });
   } catch (err) {
@@ -165,12 +266,21 @@ router.post("/generate-from-upload", async (req, res) => {
     console.log(`Znaleziono ${products.length} produktów`);
 
     // Filtrowanie (z body lub query)
-    const { category, minPrice, maxPrice, sortBy } = { ...req.query, ...req.body };
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = { ...req.query, ...req.body };
+
+    if (searchPhrase) {
+      const phrase = searchPhrase.toLowerCase();
+      products = products.filter((p) =>
+        p.name.toLowerCase().includes(phrase)
+      );
+      console.log(`Po filtrze frazy "${searchPhrase}": ${products.length} produktów`);
+    }
 
     if (category) {
       products = products.filter((p) =>
         p.category.toLowerCase().includes(category.toLowerCase())
       );
+      console.log(`Po filtrze kategorii: ${products.length} produktów`);
     }
 
     if (minPrice) {
@@ -181,12 +291,39 @@ router.post("/generate-from-upload", async (req, res) => {
       products = products.filter((p) => p.price <= Number(maxPrice));
     }
 
+    // Nowe filtry
+    if (minStock) {
+      products = products.filter((p) => p.availabilityCount >= Number(minStock));
+      console.log(`Po filtrze min. stanu (${minStock}): ${products.length} produktów`);
+    }
+
+    if (onlyAvailable === true || onlyAvailable === "true" || onlyAvailable === "1") {
+      products = products.filter((p) => p.availabilityCount > 0);
+      console.log(`Po filtrze dostępności: ${products.length} produktów`);
+    }
+
+    if (color) {
+      products = products.filter((p) =>
+        p.color && p.color.toLowerCase().includes(color.toLowerCase())
+      );
+      console.log(`Po filtrze koloru (${color}): ${products.length} produktów`);
+    }
+
+    if (composition) {
+      products = products.filter((p) =>
+        p.composition && p.composition.toLowerCase().includes(composition.toLowerCase())
+      );
+      console.log(`Po filtrze składu (${composition}): ${products.length} produktów`);
+    }
+
     if (sortBy === "price") {
       products.sort((a, b) => a.price - b.price);
     } else if (sortBy === "name") {
       products.sort((a, b) => a.name.localeCompare(b.name, "pl"));
     } else if (sortBy === "category") {
       products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
+    } else if (sortBy === "stock") {
+      products.sort((a, b) => b.availabilityCount - a.availabilityCount);
     }
 
     console.log(`Generowanie PDF dla ${products.length} produktów...`);
@@ -261,6 +398,157 @@ router.get("/upload-info", async (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: "Błąd odczytu uploadowanego pliku",
+      message: err.message,
+    });
+  }
+});
+
+// === URL FEED ENDPOINTS ===
+
+// Pobierz feed z URL
+router.post("/fetch-url-feed", async (req, res) => {
+  try {
+    const { url, login, password } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "Brak adresu URL" });
+    }
+
+    urlFeedFilePath = await fetchFeedFromUrl(url, login, password);
+
+    const products = await parseFeed(urlFeedFilePath);
+    const categories = [...new Set(products.map((p) => p.category).filter(Boolean))];
+    const colors = [...new Set(products.map((p) => p.color).filter(Boolean))];
+    const compositions = [...new Set(products.map((p) => p.composition).filter(Boolean))];
+    const availableCount = products.filter((p) => p.availabilityCount > 0).length;
+
+    res.json({
+      success: true,
+      source: "url",
+      totalProducts: products.length,
+      availableProducts: availableCount,
+      estimatedPages: Math.ceil(products.length / 2),
+      categories: categories.sort(),
+      colors: colors.sort(),
+      compositions: compositions.sort(),
+      priceRange: {
+        min: Math.min(...products.map((p) => p.price).filter((p) => p > 0)) || 0,
+        max: Math.max(...products.map((p) => p.price)) || 0,
+      },
+      stockRange: {
+        min: Math.min(...products.map((p) => p.availabilityCount)) || 0,
+        max: Math.max(...products.map((p) => p.availabilityCount)) || 0,
+      },
+    });
+  } catch (err) {
+    console.error("Błąd pobierania feedu z URL:", err);
+    res.status(500).json({
+      error: "Błąd pobierania feedu z URL",
+      message: err.message,
+    });
+  }
+});
+
+// Generowanie PDF z feedu URL
+router.post("/generate-from-url", async (req, res) => {
+  const startTime = Date.now();
+
+  req.setTimeout(600000);
+  res.setTimeout(600000);
+
+  try {
+    if (!urlFeedFilePath || !fs.existsSync(urlFeedFilePath)) {
+      return res.status(400).json({ error: "Najpierw pobierz feed z URL" });
+    }
+
+    console.log("=== Generowanie katalogu z feedu URL ===");
+    console.log(`Plik źródłowy: ${urlFeedFilePath}`);
+
+    let products = await parseFeed(urlFeedFilePath);
+
+    if (!products || products.length === 0) {
+      return res.status(500).json({ error: "Brak produktów w feedzie" });
+    }
+
+    console.log(`Znaleziono ${products.length} produktów`);
+
+    // Filtrowanie
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = { ...req.query, ...req.body };
+
+    if (searchPhrase) {
+      const phrase = searchPhrase.toLowerCase();
+      products = products.filter((p) =>
+        p.name.toLowerCase().includes(phrase)
+      );
+      console.log(`Po filtrze frazy "${searchPhrase}": ${products.length} produktów`);
+    }
+
+    if (category) {
+      products = products.filter((p) =>
+        p.category.toLowerCase().includes(category.toLowerCase())
+      );
+      console.log(`Po filtrze kategorii: ${products.length} produktów`);
+    }
+
+    if (minPrice) {
+      products = products.filter((p) => p.price >= Number(minPrice));
+    }
+
+    if (maxPrice) {
+      products = products.filter((p) => p.price <= Number(maxPrice));
+    }
+
+    if (minStock) {
+      products = products.filter((p) => p.availabilityCount >= Number(minStock));
+      console.log(`Po filtrze min. stanu (${minStock}): ${products.length} produktów`);
+    }
+
+    if (onlyAvailable === true || onlyAvailable === "true" || onlyAvailable === "1") {
+      products = products.filter((p) => p.availabilityCount > 0);
+      console.log(`Po filtrze dostępności: ${products.length} produktów`);
+    }
+
+    if (color) {
+      products = products.filter((p) =>
+        p.color && p.color.toLowerCase().includes(color.toLowerCase())
+      );
+      console.log(`Po filtrze koloru (${color}): ${products.length} produktów`);
+    }
+
+    if (composition) {
+      products = products.filter((p) =>
+        p.composition && p.composition.toLowerCase().includes(composition.toLowerCase())
+      );
+      console.log(`Po filtrze składu (${composition}): ${products.length} produktów`);
+    }
+
+    if (sortBy === "price") {
+      products.sort((a, b) => a.price - b.price);
+    } else if (sortBy === "name") {
+      products.sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    } else if (sortBy === "category") {
+      products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
+    } else if (sortBy === "stock") {
+      products.sort((a, b) => b.availabilityCount - a.availabilityCount);
+    }
+
+    console.log(`Generowanie PDF dla ${products.length} produktów...`);
+    const pdfBytes = await generateCatalogPdf(products);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`=== Katalog wygenerowany w ${duration}s ===`);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="katalog_spod-igly-i-nitki.pdf"'
+    );
+    res.setHeader("Content-Length", pdfBytes.length);
+    res.send(Buffer.from(pdfBytes));
+  } catch (err) {
+    console.error("Błąd generowania katalogu:", err);
+    res.status(500).json({
+      error: "Błąd generowania katalogu",
       message: err.message,
     });
   }

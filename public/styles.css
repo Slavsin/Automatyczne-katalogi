@@ -202,6 +202,14 @@ h2 {
   letter-spacing: 0.5px;
 }
 
+.filter-group-wide {
+  grid-column: 1 / -1;
+}
+
+.filter-group-wide input {
+  width: 100%;
+}
+
 .filter-group input,
 .filter-group select {
   padding: 10px 12px;
@@ -248,6 +256,50 @@ h2 {
   background: #ccc;
   cursor: not-allowed;
   transform: none;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #8b7355;
+  border: 2px solid #8b7355;
+  padding: 12px 32px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 16px;
+}
+
+.btn-secondary:hover {
+  background: #8b7355;
+  color: #fff;
+}
+
+.btn-secondary:disabled {
+  background: #f5f5f5;
+  border-color: #ccc;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* URL Panel */
+.url-panel {
+  background: #fff;
+  border: 1px solid #e5e2de;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.url-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.url-form .filter-row {
+  margin-top: 8px;
 }
 
 /* Log Panel */
