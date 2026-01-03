@@ -549,3 +549,164 @@ router.post("/generate-from-url", async (req, res) => {
     });
   }
 });
+
+// ============================================
+// SSE ENDPOINTS - Generowanie z postępem
+// ============================================
+
+// SSE: Generowanie z uploadowanego pliku z postępem
+router.get("/generate-from-upload-sse", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  req.setTimeout(600000);
+  res.setTimeout(600000);
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    if (!uploadedFilePath || !fs.existsSync(uploadedFilePath)) {
+      sendEvent({ type: "error", message: "Najpierw prześlij plik" });
+      res.end();
+      return;
+    }
+
+    sendEvent({ type: "progress", phase: "parsing", current: 0, total: 100, message: "Parsowanie pliku..." });
+
+    let products = await parseFeed(uploadedFilePath);
+
+    if (!products || products.length === 0) {
+      sendEvent({ type: "error", message: "Brak produktów w pliku" });
+      res.end();
+      return;
+    }
+
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = req.query;
+
+    if (searchPhrase) products = products.filter((p) => p.name.toLowerCase().includes(searchPhrase.toLowerCase()));
+    if (category) products = products.filter((p) => p.category.toLowerCase().includes(category.toLowerCase()));
+    if (minPrice) products = products.filter((p) => p.price >= Number(minPrice));
+    if (maxPrice) products = products.filter((p) => p.price <= Number(maxPrice));
+    if (minStock) products = products.filter((p) => p.availabilityCount >= Number(minStock));
+    if (onlyAvailable === "true" || onlyAvailable === "1") products = products.filter((p) => p.availabilityCount > 0);
+    if (color) products = products.filter((p) => p.color && p.color.toLowerCase().includes(color.toLowerCase()));
+    if (composition) products = products.filter((p) => p.composition && p.composition.toLowerCase().includes(composition.toLowerCase()));
+
+    if (sortBy === "price") products.sort((a, b) => a.price - b.price);
+    else if (sortBy === "name") products.sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    else if (sortBy === "category") products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
+    else if (sortBy === "stock") products.sort((a, b) => b.availabilityCount - a.availabilityCount);
+
+    sendEvent({ type: "progress", phase: "generating", current: 0, total: Math.ceil(products.length / 2), message: `Generowanie ${products.length} produktów...` });
+
+    const pdfBytes = await generateCatalogPdf(products, (progress) => {
+      sendEvent({ type: "progress", ...progress });
+    });
+
+    const pdfPath = path.join(os.tmpdir(), `catalog-${Date.now()}.pdf`);
+    fs.writeFileSync(pdfPath, Buffer.from(pdfBytes));
+
+    sendEvent({ type: "done", downloadUrl: `/api/download-pdf?file=${path.basename(pdfPath)}`, size: pdfBytes.length });
+    res.end();
+
+  } catch (err) {
+    console.error("Błąd generowania:", err);
+    sendEvent({ type: "error", message: err.message });
+    res.end();
+  }
+});
+
+// SSE: Generowanie z feedu URL z postępem
+router.get("/generate-from-url-sse", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  req.setTimeout(600000);
+  res.setTimeout(600000);
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    if (!urlFeedFilePath || !fs.existsSync(urlFeedFilePath)) {
+      sendEvent({ type: "error", message: "Najpierw pobierz feed z URL" });
+      res.end();
+      return;
+    }
+
+    sendEvent({ type: "progress", phase: "parsing", current: 0, total: 100, message: "Parsowanie feedu..." });
+
+    let products = await parseFeed(urlFeedFilePath);
+
+    if (!products || products.length === 0) {
+      sendEvent({ type: "error", message: "Brak produktów w feedzie" });
+      res.end();
+      return;
+    }
+
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = req.query;
+
+    if (searchPhrase) products = products.filter((p) => p.name.toLowerCase().includes(searchPhrase.toLowerCase()));
+    if (category) products = products.filter((p) => p.category.toLowerCase().includes(category.toLowerCase()));
+    if (minPrice) products = products.filter((p) => p.price >= Number(minPrice));
+    if (maxPrice) products = products.filter((p) => p.price <= Number(maxPrice));
+    if (minStock) products = products.filter((p) => p.availabilityCount >= Number(minStock));
+    if (onlyAvailable === "true" || onlyAvailable === "1") products = products.filter((p) => p.availabilityCount > 0);
+    if (color) products = products.filter((p) => p.color && p.color.toLowerCase().includes(color.toLowerCase()));
+    if (composition) products = products.filter((p) => p.composition && p.composition.toLowerCase().includes(composition.toLowerCase()));
+
+    if (sortBy === "price") products.sort((a, b) => a.price - b.price);
+    else if (sortBy === "name") products.sort((a, b) => a.name.localeCompare(b.name, "pl"));
+    else if (sortBy === "category") products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
+    else if (sortBy === "stock") products.sort((a, b) => b.availabilityCount - a.availabilityCount);
+
+    sendEvent({ type: "progress", phase: "generating", current: 0, total: Math.ceil(products.length / 2), message: `Generowanie ${products.length} produktów...` });
+
+    const pdfBytes = await generateCatalogPdf(products, (progress) => {
+      sendEvent({ type: "progress", ...progress });
+    });
+
+    const pdfPath = path.join(os.tmpdir(), `catalog-${Date.now()}.pdf`);
+    fs.writeFileSync(pdfPath, Buffer.from(pdfBytes));
+
+    sendEvent({ type: "done", downloadUrl: `/api/download-pdf?file=${path.basename(pdfPath)}`, size: pdfBytes.length });
+    res.end();
+
+  } catch (err) {
+    console.error("Błąd generowania:", err);
+    sendEvent({ type: "error", message: err.message });
+    res.end();
+  }
+});
+
+// Endpoint do pobierania wygenerowanego PDF
+router.get("/download-pdf", (req, res) => {
+  const { file } = req.query;
+
+  if (!file || file.includes("..") || !file.startsWith("catalog-")) {
+    return res.status(400).json({ error: "Nieprawidłowy plik" });
+  }
+
+  const pdfPath = path.join(os.tmpdir(), file);
+
+  if (!fs.existsSync(pdfPath)) {
+    return res.status(404).json({ error: "Plik nie istnieje lub wygasł" });
+  }
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'attachment; filename="katalog_spod-igly-i-nitki.pdf"');
+
+  const stream = fs.createReadStream(pdfPath);
+  stream.pipe(res);
+
+  setTimeout(() => {
+    try { if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath); } catch (e) { /* ignore */ }
+  }, 5 * 60 * 1000);
+});

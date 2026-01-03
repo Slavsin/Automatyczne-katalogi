@@ -48,7 +48,7 @@ const LOGO_PATH = path.join(process.cwd(), "identyfikacja", "Logo.png");
 // ============================================
 // MAIN EXPORT FUNCTION
 // ============================================
-export async function generateCatalogPdf(products) {
+export async function generateCatalogPdf(products, onProgress = null) {
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -63,7 +63,13 @@ export async function generateCatalogPdf(products) {
     console.warn("Nie można załadować logo:", e.message);
   }
 
-  console.log(`Generowanie PDF dla ${products.length} produktów...`);
+  const totalPages = Math.ceil(products.length / 2);
+  console.log(`Generowanie PDF dla ${products.length} produktów (${totalPages} stron)...`);
+
+  // Report initial progress
+  if (onProgress) {
+    onProgress({ phase: "init", current: 0, total: totalPages, message: "Przygotowanie dokumentu..." });
+  }
 
   // ========== TITLE PAGE ==========
   await renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, products.length);
@@ -74,6 +80,7 @@ export async function generateCatalogPdf(products) {
   for (let i = 0; i < products.length; i += 2) {
     const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     const pageNumber = Math.floor(i / 2) + 2; // +2 because title page is 1
+    const currentPage = Math.floor(i / 2) + 1;
 
     // White background
     page.drawRectangle({
@@ -123,15 +130,33 @@ export async function generateCatalogPdf(products) {
     // Footer with page number and logo hint
     renderPageFooter(page, pageNumber, fontRegular, logoImage, pdfDoc);
 
+    // Report progress every 10 pages or at key milestones
+    if (onProgress && (currentPage % 10 === 0 || currentPage === totalPages)) {
+      onProgress({
+        phase: "generating",
+        current: currentPage,
+        total: totalPages,
+        message: `Generowanie strony ${currentPage}/${totalPages}...`
+      });
+    }
+
     // Log progress
     if ((i / 2 + 1) % 100 === 0) {
       console.log(`Wygenerowano ${i / 2 + 1} stron...`);
     }
   }
 
+  if (onProgress) {
+    onProgress({ phase: "finalizing", current: totalPages, total: totalPages, message: "Finalizacja PDF..." });
+  }
+
   console.log(`Finalizacja PDF...`);
   const pdfBytes = await pdfDoc.save();
   console.log(`PDF wygenerowany: ${(pdfBytes.length / 1024 / 1024).toFixed(2)} MB`);
+
+  if (onProgress) {
+    onProgress({ phase: "done", current: totalPages, total: totalPages, message: "Gotowe!" });
+  }
 
   return pdfBytes;
 }

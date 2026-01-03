@@ -227,10 +227,43 @@ async function fetchUrlFeed() {
   }
 }
 
+// === PROGRESS BAR ===
+const progressContainer = document.createElement("div");
+progressContainer.id = "progressContainer";
+progressContainer.className = "progress-container";
+progressContainer.style.display = "none";
+progressContainer.innerHTML = `
+  <div class="progress-info">
+    <span id="progressMessage">Przygotowanie...</span>
+    <span id="progressPercent">0%</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+`;
+document.querySelector(".actions").insertBefore(progressContainer, generateBtn);
+
+function updateProgress(current, total, message) {
+  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+  document.getElementById("progressFill").style.width = percent + "%";
+  document.getElementById("progressPercent").textContent = percent + "%";
+  document.getElementById("progressMessage").textContent = message || `${current}/${total}`;
+}
+
+function showProgress() {
+  progressContainer.style.display = "block";
+  updateProgress(0, 100, "Przygotowanie...");
+}
+
+function hideProgress() {
+  progressContainer.style.display = "none";
+}
+
 // === GENERATE PDF ===
 async function generateCatalog() {
   generateBtn.disabled = true;
   generateBtn.textContent = "Generowanie...";
+  showProgress();
 
   log("Rozpoczynam generowanie katalogu...");
 
@@ -259,51 +292,88 @@ async function generateCatalog() {
     const queryString = params.toString() ? "?" + params.toString() : "";
 
     let url;
-    let method = "POST";
     if (currentSource === "upload") {
-      url = "/api/generate-from-upload" + queryString;
+      url = "/api/generate-from-upload-sse" + queryString;
       log("Generowanie z uploadowanego pliku...");
     } else if (currentSource === "url") {
-      url = "/api/generate-from-url" + queryString;
+      url = "/api/generate-from-url-sse" + queryString;
       log("Generowanie z feedu URL...");
     } else {
+      // Fallback do starego endpointu dla FTP
       url = "/api/generate-catalog" + queryString;
-      method = "GET";
-      log("Pobieranie danych z FTP...");
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw new Error(`Blad serwera: ${res.status}`);
+      const blob = await res.blob();
+      downloadBlob(blob);
+      return;
     }
 
     const startTime = Date.now();
-    const res = await fetch(url, { method });
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || `Blad serwera: ${res.status}`);
-    }
+    // SSE dla postępu
+    const eventSource = new EventSource(url);
 
-    log("Pobieranie PDF...");
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
 
-    const blob = await res.blob();
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+      if (data.type === "progress") {
+        updateProgress(data.current, data.total, data.message);
+        log(data.message);
+      } else if (data.type === "done") {
+        eventSource.close();
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        const sizeMB = (data.size / 1024 / 1024).toFixed(2);
+        log(`PDF wygenerowany (${sizeMB} MB) w ${duration}s`, "success");
+        updateProgress(100, 100, "Pobieranie...");
 
-    log(`PDF wygenerowany (${sizeMB} MB) w ${duration}s`, "success");
+        // Pobierz PDF
+        window.location.href = data.downloadUrl;
+        log("Plik zapisany!", "success");
 
-    const downloadUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = "katalog_spod-igly-i-nitki.pdf";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(downloadUrl);
+        setTimeout(() => {
+          hideProgress();
+          generateBtn.disabled = false;
+          generateBtn.textContent = "Generuj katalog PDF";
+        }, 1000);
+      } else if (data.type === "error") {
+        eventSource.close();
+        throw new Error(data.message);
+      }
+    };
 
-    log("Plik zapisany!", "success");
+    eventSource.onerror = () => {
+      eventSource.close();
+      log("Blad polaczenia z serwerem", "error");
+      hideProgress();
+      generateBtn.disabled = false;
+      generateBtn.textContent = "Generuj katalog PDF";
+    };
+
   } catch (err) {
     log("Blad: " + err.message, "error");
-  } finally {
+    hideProgress();
     generateBtn.disabled = false;
     generateBtn.textContent = "Generuj katalog PDF";
   }
+}
+
+function downloadBlob(blob) {
+  const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+  log(`PDF wygenerowany (${sizeMB} MB)`, "success");
+
+  const downloadUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = downloadUrl;
+  a.download = "katalog_spod-igly-i-nitki.pdf";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(downloadUrl);
+
+  log("Plik zapisany!", "success");
+  hideProgress();
+  generateBtn.disabled = false;
+  generateBtn.textContent = "Generuj katalog PDF";
 }
 
 generateBtn.addEventListener("click", generateCatalog);
