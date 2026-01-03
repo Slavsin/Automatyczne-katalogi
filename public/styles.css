@@ -23,9 +23,9 @@ header {
 }
 
 .header-logo {
-  max-width: 180px;
+  max-width: 540px;
   height: auto;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 h1 {
