@@ -24,7 +24,9 @@ header {
 
 .header-logo {
   max-width: 540px;
-  height: auto;
+  height: 120px;
+  object-fit: cover;
+  object-position: top;
   margin-bottom: 4px;
 }
 
