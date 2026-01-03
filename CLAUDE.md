@@ -18,8 +18,9 @@ Generuje profesjonalny katalog w stylu "home & decor" z kodami kreskowymi EAN i 
 - **Kody kreskowe:** bwip-js (EAN-13)
 - **FTP:** basic-ftp
 - **Parsery:** xml2js, csv-parse, xlsx
-- **Frontend:** statyczny HTML + CSS + JS
+- **Frontend:** statyczny HTML + CSS + JS (dark/light theme)
 - **SSE:** Server-Sent Events dla postępu generacji
+- **Fonts:** Inter (UI), JetBrains Mono (logi)
 
 ## Komendy
 
@@ -51,9 +52,11 @@ src/
   routes/
     generateCatalogRoute.js   # Routing API (upload, URL, SSE)
 public/
-  index.html                  # Dashboard z tabami (upload/URL)
-  main.js                     # Logika frontendu + SSE + progress bar
-  styles.css                  # Style z progress bar i discount panel
+  index.html                  # Dashboard z tabami (upload/URL) + theme switcher
+  main.js                     # Logika frontendu + SSE + progress bar + theme management
+  styles.css                  # CSS z dark/light theme (CSS variables)
+  logo.png                    # Logo firmy
+  favicon.png                 # Favicon
 temp/                         # Tymczasowe pliki PDF (auto-cleanup 5 min)
 uploads/                      # Uploadowane feedy
 ```
@@ -146,6 +149,20 @@ eventSource.onmessage = (event) => {
 - Przy każdym produkcie cena netto po rabacie wyświetlana jest w kolorze czerwonym
 - Obliczenie: `priceNet * (1 - discountPercent / 100)`
 
+### Theme Switcher (Dark/Light/System)
+Frontend obsługuje 3 motywy kolorystyczne:
+- **Light** - jasny, kremowy motyw (#f8f6f3 tło)
+- **Dark** - ciemny motyw (#0f0f0f tło) - domyślny
+- **System** - automatyczne wykrywanie preferencji systemowych
+
+Implementacja:
+- CSS Variables w `:root` i `[data-theme]` selektorach
+- `@media (prefers-color-scheme)` jako fallback
+- Zapisywanie wyboru w `localStorage`
+- Theme switcher w prawym górnym rogu (3 przyciski z ikonami SVG)
+- Płynne przejścia między motywami (CSS transitions)
+- Logo automatycznie dostosowuje się (filter: invert w dark mode)
+
 ### Autoryzacja URL (Basic Auth)
 Feed z URL może wymagać autoryzacji. Implementacja używa nagłówka HTTP:
 ```javascript
@@ -170,7 +187,8 @@ headers["Authorization"] = `Basic ${Buffer.from(`${login}:${password}`).toString
 - **2 produkty na stronę** A4 (ok. 1250 stron dla ~2500 produktów)
 - **EAN jako kod kreskowy** (skanowalny kolektorem) + tekst
 - **Odporność na błędy:** brak zdjęcia lub błąd kodu kreskowego nie przerywa generacji
-- **Styl:** jasne beżowe tło, elegancka typografia (Helvetica)
+- **Styl PDF:** jasne beżowe tło, elegancka typografia (Helvetica)
+- **Styl UI:** nowoczesny dark/light theme z CSS variables
 - **Progress bar:** aktualizacja co 10 stron
 - **Rabat handlowy:** ceny netto w kolorze czerwonym
 
