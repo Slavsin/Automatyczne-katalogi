@@ -2,36 +2,22 @@
    MODERN UI - Spod Igly i Nitki
    ============================================ */
 
+/* ============================================
+   THEME VARIABLES
+   ============================================ */
+
+/* Base (shared) variables */
 :root {
-  /* Color palette */
+  /* Brand colors */
   --primary: #8b7355;
   --primary-light: #a68b6a;
   --primary-dark: #6d5a43;
   --accent: #c9a86c;
 
-  /* Neutrals */
-  --bg-dark: #0f0f0f;
-  --bg-card: #1a1a1a;
-  --bg-card-hover: #222222;
-  --bg-input: #262626;
-  --border: #333333;
-  --border-light: #444444;
-
-  /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0a0;
-  --text-muted: #666666;
-
   /* Status */
   --success: #22c55e;
   --error: #ef4444;
   --warning: #f59e0b;
-
-  /* Shadows & Effects */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(139, 115, 85, 0.3);
 
   /* Transitions */
   --transition-fast: 0.15s ease;
@@ -45,6 +31,89 @@
   --radius-xl: 24px;
 }
 
+/* Dark theme (default) */
+[data-theme="dark"] {
+  --bg-body: #0f0f0f;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #222222;
+  --bg-input: #262626;
+  --border: #333333;
+  --border-light: #444444;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(139, 115, 85, 0.3);
+  --logo-filter: brightness(0) invert(1);
+  --bg-gradient-1: rgba(139, 115, 85, 0.08);
+  --bg-gradient-2: rgba(139, 115, 85, 0.05);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-body: #f8f6f3;
+  --bg-card: #ffffff;
+  --bg-card-hover: #faf9f7;
+  --bg-input: #f0ede8;
+  --border: #e0dcd5;
+  --border-light: #d0ccc5;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5a5a5a;
+  --text-muted: #8a8a8a;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(139, 115, 85, 0.15);
+  --logo-filter: none;
+  --bg-gradient-1: rgba(139, 115, 85, 0.06);
+  --bg-gradient-2: rgba(139, 115, 85, 0.03);
+}
+
+/* System preference detection (fallback when no data-theme set) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg-body: #0f0f0f;
+    --bg-card: #1a1a1a;
+    --bg-card-hover: #222222;
+    --bg-input: #262626;
+    --border: #333333;
+    --border-light: #444444;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-muted: #666666;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(139, 115, 85, 0.3);
+    --logo-filter: brightness(0) invert(1);
+    --bg-gradient-1: rgba(139, 115, 85, 0.08);
+    --bg-gradient-2: rgba(139, 115, 85, 0.05);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg-body: #f8f6f3;
+    --bg-card: #ffffff;
+    --bg-card-hover: #faf9f7;
+    --bg-input: #f0ede8;
+    --border: #e0dcd5;
+    --border-light: #d0ccc5;
+    --text-primary: #1a1a1a;
+    --text-secondary: #5a5a5a;
+    --text-muted: #8a8a8a;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 20px rgba(139, 115, 85, 0.15);
+    --logo-filter: none;
+    --bg-gradient-1: rgba(139, 115, 85, 0.06);
+    --bg-gradient-2: rgba(139, 115, 85, 0.03);
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -53,13 +122,14 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-dark);
+  background: var(--bg-body);
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
   background-image:
-    radial-gradient(ellipse at top, rgba(139, 115, 85, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at bottom right, rgba(139, 115, 85, 0.05) 0%, transparent 50%);
+    radial-gradient(ellipse at top, var(--bg-gradient-1) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, var(--bg-gradient-2) 0%, transparent 50%);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 /* ============================================
@@ -85,7 +155,7 @@ header {
   max-width: 320px;
   height: auto;
   margin-bottom: 16px;
-  filter: brightness(0) invert(1);
+  filter: var(--logo-filter);
   opacity: 0.95;
   transition: var(--transition-normal);
 }
@@ -674,7 +744,7 @@ h2::before {
 }
 
 #log::-webkit-scrollbar-track {
-  background: var(--bg-dark);
+  background: var(--bg-body);
 }
 
 #log::-webkit-scrollbar-thumb {
@@ -684,6 +754,54 @@ h2::before {
 
 #log::-webkit-scrollbar-thumb:hover {
   background: var(--border-light);
+}
+
+/* ============================================
+   THEME SWITCHER
+   ============================================ */
+.theme-switcher {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: var(--transition-fast);
+  font-size: 1.1rem;
+}
+
+.theme-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
+.theme-btn.active {
+  color: var(--primary-light);
+  background: var(--bg-input);
+}
+
+.theme-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 /* ============================================

@@ -1,3 +1,44 @@
+// ============================================
+// THEME MANAGEMENT
+// ============================================
+const themeBtns = document.querySelectorAll(".theme-btn");
+
+function getSystemTheme() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function setTheme(theme) {
+  const effectiveTheme = theme === "system" ? getSystemTheme() : theme;
+  document.documentElement.setAttribute("data-theme", effectiveTheme);
+  localStorage.setItem("theme", theme);
+
+  // Update active button
+  themeBtns.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.theme === theme);
+  });
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem("theme") || "system";
+  setTheme(savedTheme);
+
+  // Listen for system theme changes
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (localStorage.getItem("theme") === "system") {
+      setTheme("system");
+    }
+  });
+}
+
+themeBtns.forEach(btn => {
+  btn.addEventListener("click", () => setTheme(btn.dataset.theme));
+});
+
+initTheme();
+
+// ============================================
+// MAIN APP
+// ============================================
 const logEl = document.getElementById("log");
 const generateBtn = document.getElementById("generate");
 const feedInfoEl = document.getElementById("feedInfo");
