@@ -22,6 +22,12 @@ header {
   margin-bottom: 40px;
 }
 
+.header-logo {
+  max-width: 180px;
+  height: auto;
+  margin-bottom: 16px;
+}
+
 h1 {
   font-size: 2rem;
   font-weight: 600;
