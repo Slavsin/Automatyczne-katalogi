@@ -39,34 +39,30 @@ let uploadedFilePath = null;
 let urlFeedFilePath = null;
 
 // Funkcja do pobierania feedu z URL
-// Serwer abstore wymaga obsługi cookies (sesji) - używamy tough-cookie
+// Obsługuje Basic Auth w nagłówkach oraz cookies dla sesji
 async function fetchFeedFromUrl(url, login, password) {
   console.log(`Pobieranie feedu z: ${url}`);
-
-  // Wbuduj credentials w URL jeśli podane
-  let finalUrl = url;
-  if (login && password) {
-    try {
-      const urlObj = new URL(url);
-      urlObj.username = login;
-      urlObj.password = password;
-      finalUrl = urlObj.toString();
-      console.log(`Autoryzacja: credentials wbudowane w URL dla użytkownika "${login}"`);
-    } catch (e) {
-      console.error("Błąd tworzenia URL z credentials:", e.message);
-    }
-  }
 
   try {
     // Cookie jar do przechowywania sesji
     const cookieJar = new CookieJar();
 
-    // Użyj got z cookie jar - serwer wymaga przesyłania cookies
-    const response = await got(finalUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/xml, text/xml, */*",
-      },
+    // Przygotuj nagłówki
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/xml, text/xml, */*",
+    };
+
+    // Dodaj Basic Auth jeśli podano credentials
+    if (login && password) {
+      const credentials = Buffer.from(`${login}:${password}`).toString("base64");
+      headers["Authorization"] = `Basic ${credentials}`;
+      console.log(`Autoryzacja: Basic Auth dla użytkownika "${login}"`);
+    }
+
+    // Użyj got z cookie jar
+    const response = await got(url, {
+      headers,
       cookieJar,
       followRedirect: true,
       maxRedirects: 10,
