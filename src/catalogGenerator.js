@@ -48,7 +48,7 @@ const LOGO_PATH = path.join(process.cwd(), "identyfikacja", "Logo.png");
 // ============================================
 // MAIN EXPORT FUNCTION
 // ============================================
-export async function generateCatalogPdf(products, onProgress = null) {
+export async function generateCatalogPdf(products, onProgress = null, discountOptions = null) {
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -65,6 +65,9 @@ export async function generateCatalogPdf(products, onProgress = null) {
 
   const totalPages = Math.ceil(products.length / 2);
   console.log(`Generowanie PDF dla ${products.length} produktów (${totalPages} stron)...`);
+  if (discountOptions) {
+    console.log(`Rabat handlowy: ${discountOptions.percent}% (${discountOptions.label})`);
+  }
 
   // Report initial progress
   if (onProgress) {
@@ -72,7 +75,7 @@ export async function generateCatalogPdf(products, onProgress = null) {
   }
 
   // ========== TITLE PAGE ==========
-  await renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, products.length);
+  await renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, products.length, discountOptions);
 
   // ========== PRODUCT PAGES ==========
   const productBlockHeight = (PAGE_HEIGHT - MARGIN * 2 - 40) / 2; // 40px for footer
@@ -102,6 +105,7 @@ export async function generateCatalogPdf(products, onProgress = null) {
         height: productBlockHeight,
         fontRegular,
         fontBold,
+        discountOptions,
       });
     }
 
@@ -124,6 +128,7 @@ export async function generateCatalogPdf(products, onProgress = null) {
         height: productBlockHeight,
         fontRegular,
         fontBold,
+        discountOptions,
       });
     }
 
@@ -164,7 +169,7 @@ export async function generateCatalogPdf(products, onProgress = null) {
 // ============================================
 // TITLE PAGE
 // ============================================
-async function renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, productCount) {
+async function renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, productCount, discountOptions = null) {
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
   // Cream background
@@ -210,10 +215,23 @@ async function renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, product
     color: BRAND.textSecondary,
   });
 
+  // Discount info - jeśli jest rabat, pokaż na stronie tytułowej
+  if (discountOptions) {
+    const discountText = `${discountOptions.label}: -${discountOptions.percent}%`;
+    const discountWidth = fontBold.widthOfTextAtSize(discountText, 16);
+    page.drawText(discountText, {
+      x: (PAGE_WIDTH - discountWidth) / 2,
+      y: PAGE_HEIGHT / 2 - 55,
+      size: 16,
+      font: fontBold,
+      color: rgb(0.8, 0.2, 0.2), // Czerwony
+    });
+  }
+
   // Decorative line
   page.drawLine({
-    start: { x: PAGE_WIDTH / 2 - 60, y: PAGE_HEIGHT / 2 - 50 },
-    end: { x: PAGE_WIDTH / 2 + 60, y: PAGE_HEIGHT / 2 - 50 },
+    start: { x: PAGE_WIDTH / 2 - 60, y: PAGE_HEIGHT / 2 - (discountOptions ? 75 : 50) },
+    end: { x: PAGE_WIDTH / 2 + 60, y: PAGE_HEIGHT / 2 - (discountOptions ? 75 : 50) },
     thickness: 1,
     color: BRAND.taupe,
   });
@@ -223,7 +241,7 @@ async function renderTitlePage(pdfDoc, logoImage, fontRegular, fontBold, product
   const yearWidth = fontBold.widthOfTextAtSize(year, 24);
   page.drawText(year, {
     x: (PAGE_WIDTH - yearWidth) / 2,
-    y: PAGE_HEIGHT / 2 - 90,
+    y: PAGE_HEIGHT / 2 - (discountOptions ? 115 : 90),
     size: 24,
     font: fontBold,
     color: BRAND.textPrimary,
@@ -287,7 +305,7 @@ function renderPageFooter(page, pageNumber, fontRegular, logoImage, pdfDoc) {
 // PRODUCT BLOCK
 // ============================================
 async function renderProductBlock(pdfDoc, page, product, layout) {
-  const { x, y, width, height, fontRegular, fontBold } = layout;
+  const { x, y, width, height, fontRegular, fontBold, discountOptions } = layout;
 
   // Layout calculations - large images for maximum visibility
   const imageSize = Math.min(width * 0.55, height - 60);
@@ -394,6 +412,35 @@ async function renderProductBlock(pdfDoc, page, product, layout) {
       });
     }
     textY -= 20;
+
+    // ========== DISCOUNTED PRICE (jeśli jest rabat) ==========
+    if (discountOptions && product.priceNet) {
+      const discountMultiplier = 1 - (discountOptions.percent / 100);
+      const discountedNetPrice = product.priceNet * discountMultiplier;
+
+      // Cena z rabatem - czerwona, widoczna
+      const discountPriceText = `${discountedNetPrice.toFixed(2)} PLN netto`;
+      page.drawText(discountPriceText, {
+        x: textX,
+        y: textY,
+        size: 14,
+        font: fontBold,
+        color: rgb(0.8, 0.15, 0.15), // Czerwony
+      });
+
+      // Etykieta rabatu
+      const priceWidth = fontBold.widthOfTextAtSize(discountPriceText, 14);
+      const labelText = `(-${discountOptions.percent}% ${sanitizeText(discountOptions.label)})`;
+      page.drawText(labelText, {
+        x: textX + priceWidth + 6,
+        y: textY + 1,
+        size: 8,
+        font: fontRegular,
+        color: rgb(0.6, 0.15, 0.15), // Ciemniejszy czerwony
+      });
+
+      textY -= 16;
+    }
   }
 
   // ========== AVAILABILITY ==========

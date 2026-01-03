@@ -350,6 +350,19 @@ h2 {
   font-size: 0.9rem;
 }
 
+/* Discount Panel */
+.discount-panel {
+  background: #fff;
+  border: 1px solid #e5e2de;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.discount-panel h2 {
+  color: #8b7355;
+}
+
 /* Progress Bar */
 .progress-container {
   width: 100%;

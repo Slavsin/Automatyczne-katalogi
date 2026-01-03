@@ -278,6 +278,8 @@ async function generateCatalog() {
     const onlyAvailable = document.getElementById("onlyAvailable").checked;
     const color = document.getElementById("color").value;
     const composition = document.getElementById("composition").value;
+    const discountPercent = document.getElementById("discountPercent").value;
+    const discountLabel = document.getElementById("discountLabel").value.trim();
 
     if (searchPhrase) params.set("searchPhrase", searchPhrase);
     if (category) params.set("category", category);
@@ -288,6 +290,11 @@ async function generateCatalog() {
     if (onlyAvailable) params.set("onlyAvailable", "true");
     if (color) params.set("color", color);
     if (composition) params.set("composition", composition);
+    if (discountPercent && Number(discountPercent) > 0) {
+      params.set("discountPercent", discountPercent);
+      if (discountLabel) params.set("discountLabel", discountLabel);
+      log(`Rabat handlowy: ${discountPercent}%`);
+    }
 
     const queryString = params.toString() ? "?" + params.toString() : "";
 

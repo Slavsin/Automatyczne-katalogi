@@ -125,6 +125,22 @@
         </div>
       </section>
 
+      <!-- Rabat handlowy -->
+      <section class="discount-panel">
+        <h2>Rabat handlowy (opcjonalnie)</h2>
+        <p class="upload-hint">Wpisz rabat procentowy dla klienta. Cena z rabatem pojawi sie w katalogu.</p>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label for="discountPercent">Rabat (%)</label>
+            <input type="number" id="discountPercent" placeholder="0" min="0" max="100" step="1" />
+          </div>
+          <div class="filter-group">
+            <label for="discountLabel">Nazwa warunkow (opcjonalnie)</label>
+            <input type="text" id="discountLabel" placeholder="np. Warunki specjalne" />
+          </div>
+        </div>
+      </section>
+
       <section class="actions">
         <button id="generate" class="btn-primary" disabled>
           Generuj katalog PDF

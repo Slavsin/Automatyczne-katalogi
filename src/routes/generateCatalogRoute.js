@@ -585,7 +585,7 @@ router.get("/generate-from-upload-sse", async (req, res) => {
       return;
     }
 
-    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = req.query;
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition, discountPercent, discountLabel } = req.query;
 
     if (searchPhrase) products = products.filter((p) => p.name.toLowerCase().includes(searchPhrase.toLowerCase()));
     if (category) products = products.filter((p) => p.category.toLowerCase().includes(category.toLowerCase()));
@@ -601,11 +601,21 @@ router.get("/generate-from-upload-sse", async (req, res) => {
     else if (sortBy === "category") products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
     else if (sortBy === "stock") products.sort((a, b) => b.availabilityCount - a.availabilityCount);
 
+    // Opcje rabatu
+    const discountOptions = discountPercent && Number(discountPercent) > 0 ? {
+      percent: Number(discountPercent),
+      label: discountLabel || "Warunki handlowe"
+    } : null;
+
+    if (discountOptions) {
+      console.log(`Rabat handlowy: ${discountOptions.percent}% (${discountOptions.label})`);
+    }
+
     sendEvent({ type: "progress", phase: "generating", current: 0, total: Math.ceil(products.length / 2), message: `Generowanie ${products.length} produktów...` });
 
     const pdfBytes = await generateCatalogPdf(products, (progress) => {
       sendEvent({ type: "progress", ...progress });
-    });
+    }, discountOptions);
 
     const pdfPath = path.join(os.tmpdir(), `catalog-${Date.now()}.pdf`);
     fs.writeFileSync(pdfPath, Buffer.from(pdfBytes));
@@ -651,7 +661,7 @@ router.get("/generate-from-url-sse", async (req, res) => {
       return;
     }
 
-    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition } = req.query;
+    const { searchPhrase, category, minPrice, maxPrice, sortBy, minStock, onlyAvailable, color, composition, discountPercent, discountLabel } = req.query;
 
     if (searchPhrase) products = products.filter((p) => p.name.toLowerCase().includes(searchPhrase.toLowerCase()));
     if (category) products = products.filter((p) => p.category.toLowerCase().includes(category.toLowerCase()));
@@ -667,11 +677,21 @@ router.get("/generate-from-url-sse", async (req, res) => {
     else if (sortBy === "category") products.sort((a, b) => a.category.localeCompare(b.category, "pl"));
     else if (sortBy === "stock") products.sort((a, b) => b.availabilityCount - a.availabilityCount);
 
+    // Opcje rabatu
+    const discountOptions = discountPercent && Number(discountPercent) > 0 ? {
+      percent: Number(discountPercent),
+      label: discountLabel || "Warunki handlowe"
+    } : null;
+
+    if (discountOptions) {
+      console.log(`Rabat handlowy: ${discountOptions.percent}% (${discountOptions.label})`);
+    }
+
     sendEvent({ type: "progress", phase: "generating", current: 0, total: Math.ceil(products.length / 2), message: `Generowanie ${products.length} produktów...` });
 
     const pdfBytes = await generateCatalogPdf(products, (progress) => {
       sendEvent({ type: "progress", ...progress });
-    });
+    }, discountOptions);
 
     const pdfPath = path.join(os.tmpdir(), `catalog-${Date.now()}.pdf`);
     fs.writeFileSync(pdfPath, Buffer.from(pdfBytes));
